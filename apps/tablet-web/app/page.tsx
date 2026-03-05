@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type IntakeMode = "VOICE_AUTO" | "MANUAL";
 type VoiceStep =
-  | "BOOTING"
+  | "IDLE"
   | "ASK_NAME"
   | "RESOLVE_NAME"
   | "ASK_LAST4"
@@ -93,8 +93,8 @@ function toVoiceFile(blob: Blob) {
 export default function TabletPage() {
   const [apiBase, setApiBase] = useState("http://localhost:4000");
   const [mode, setMode] = useState<IntakeMode>("VOICE_AUTO");
-  const [step, setStep] = useState<VoiceStep>("BOOTING");
-  const [message, setMessage] = useState("초기화 중...");
+  const [step, setStep] = useState<VoiceStep>("IDLE");
+  const [message, setMessage] = useState("음성 등록 시작 버튼을 눌러주세요.");
 
   const [recordingSupported, setRecordingSupported] = useState(true);
   const [cameraSupported, setCameraSupported] = useState(true);
@@ -121,7 +121,6 @@ export default function TabletPage() {
     EMPLOYEE_LAST4: 0
   });
 
-  const mountedRef = useRef(false);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -144,15 +143,6 @@ export default function TabletPage() {
     );
     setSpeechSupported(typeof window !== "undefined" && typeof window.speechSynthesis !== "undefined");
   }, []);
-
-  useEffect(() => {
-    if (mountedRef.current) {
-      return;
-    }
-
-    mountedRef.current = true;
-    void beginAutoFlow();
-  }, [recordingSupported, cameraSupported, speechSupported]);
 
   useEffect(() => {
     return () => {
@@ -190,7 +180,7 @@ export default function TabletPage() {
   }
 
   function resetSession() {
-    setStep("BOOTING");
+    setStep("IDLE");
     setSelectedMember(null);
     setMemberCandidates([]);
     setNameQuery("");
@@ -703,13 +693,14 @@ export default function TabletPage() {
     }
   }
 
-  async function beginAutoFlow() {
-    if (mode !== "VOICE_AUTO") {
+  async function beginAutoFlow(forceStart = false) {
+    if (!forceStart && mode !== "VOICE_AUTO") {
       return;
     }
 
     resetSession();
     setMessage("음성 자동 등록을 시작합니다.");
+    setStep("ASK_NAME");
 
     if (!recordingSupported) {
       switchToManual("마이크를 사용할 수 없어 직접 등록 모드로 전환합니다.");
@@ -734,17 +725,15 @@ export default function TabletPage() {
 
     try {
       const photoKey = await uploadPhotoBlob(photoBlob, "image/jpeg");
-      const success = await submitFood(photoKey);
-      if (success) {
-        setTimeout(() => {
-          if (mode === "VOICE_AUTO") {
-            void beginAutoFlow();
-          }
-        }, 4000);
-      }
+      await submitFood(photoKey);
     } catch {
       switchToManual("사진 업로드에 실패해 직접 등록 모드로 전환합니다.");
     }
+  }
+
+  function startFromButton() {
+    setMode("VOICE_AUTO");
+    void beginAutoFlow(true);
   }
 
   async function manualLookupName() {
@@ -795,6 +784,12 @@ export default function TabletPage() {
   return (
     <main style={{ maxWidth: 780, margin: "24px auto", fontFamily: "system-ui, sans-serif", padding: "0 12px" }}>
       <h1>냉장고 등록 태블릿</h1>
+
+      <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" onClick={startFromButton} disabled={isBusy}>
+          음성 등록 시작
+        </button>
+      </div>
 
       <section style={{ border: "1px solid #d5d9e2", borderRadius: 8, padding: 12, marginBottom: 12 }}>
         <div style={{ fontSize: 14, color: "#445" }}>
@@ -929,8 +924,7 @@ export default function TabletPage() {
             type="button"
             style={{ marginLeft: 8 }}
             onClick={() => {
-              setMode("VOICE_AUTO");
-              void beginAutoFlow();
+              startFromButton();
             }}
           >
             자동 음성 모드 재시작
