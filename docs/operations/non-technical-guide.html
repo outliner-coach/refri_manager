@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>냉장고 운영 에이전트 비개발자 가이드</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --text: #152033;
+        --sub: #4a5a75;
+        --line: #d7dfec;
+        --brand: #1a5be8;
+        --ok: #067647;
+        --warn: #b54708;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        color: var(--text);
+        background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 45%);
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 32px;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 24px;
+      }
+      h3 {
+        margin: 0 0 10px;
+        font-size: 19px;
+      }
+      p {
+        margin: 0 0 10px;
+        line-height: 1.6;
+      }
+      .meta {
+        color: var(--sub);
+        margin-bottom: 24px;
+      }
+      .section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 22px;
+        margin-top: 18px;
+      }
+      .grid-2 {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .chip {
+        display: inline-block;
+        border: 1px solid #bdd0ff;
+        color: #1746b8;
+        background: #edf3ff;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 13px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+      }
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: #fcfdff;
+      }
+      .diagram-title {
+        font-size: 16px;
+        color: #1b3f9c;
+        margin-bottom: 10px;
+        font-weight: 700;
+      }
+      .flow {
+        display: grid;
+        gap: 10px;
+      }
+      .flow-row {
+        display: grid;
+        grid-template-columns: 1fr 50px 1fr 50px 1fr;
+        align-items: center;
+      }
+      .node {
+        border: 1px solid #cbd7ee;
+        background: #fff;
+        border-radius: 10px;
+        padding: 12px;
+        text-align: center;
+        font-size: 14px;
+        min-height: 74px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .arrow {
+        text-align: center;
+        color: var(--brand);
+        font-weight: 700;
+        font-size: 19px;
+      }
+      .timeline {
+        border-left: 3px solid #c9d8ff;
+        margin-left: 8px;
+        padding-left: 18px;
+      }
+      .timeline li {
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+      ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .warn {
+        color: var(--warn);
+      }
+      .foot {
+        color: var(--sub);
+        font-size: 13px;
+        margin-top: 22px;
+      }
+      @media (max-width: 760px) {
+        .flow-row {
+          grid-template-columns: 1fr;
+        }
+        .arrow {
+          transform: rotate(90deg);
+          margin: 6px 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>냉장고 운영 에이전트 비개발자 가이드</h1>
+      <p class="meta">버전: M1+M2 기준 | 업데이트: 2026-03-06</p>
+
+      <section class="section">
+        <h2>1. 이 시스템이 하는 일</h2>
+        <p>
+          이 시스템은 <strong>냉장고 음식 등록</strong>과 <strong>유통기한 알림</strong>을 자동화합니다.
+          사용자는 태블릿에서 사번 인증 후 음식 정보를 등록하고, 시스템은 유통기한이 다가오면 Slack으로 알려줍니다.
+        </p>
+        <div>
+          <span class="chip">사번 인증</span>
+          <span class="chip">음성/사진 등록</span>
+          <span class="chip">유통기한 자동 알림</span>
+          <span class="chip">관리자 추적</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>2. 구조도 A: 전체 시스템</h2>
+        <p class="diagram-title">사람이 보는 화면과, 뒤에서 돌아가는 시스템 연결 구조</p>
+        <div class="flow">
+          <div class="flow-row">
+            <div class="node">냉장고 앞 태블릿<br />(사번 + 음식 등록)</div>
+            <div class="arrow">→</div>
+            <div class="node">API 서버<br />(검증/저장/연동)</div>
+            <div class="arrow">→</div>
+            <div class="node">MySQL<br />(등록 데이터 저장)</div>
+          </div>
+          <div class="flow-row">
+            <div class="node">관리자 웹<br />(현황 조회)</div>
+            <div class="arrow">→</div>
+            <div class="node">워커<br />(알림 스케줄 실행)</div>
+            <div class="arrow">→</div>
+            <div class="node">Slack<br />(본인/관리자 알림)</div>
+          </div>
+          <div class="flow-row">
+            <div class="node">Google Sheets<br />(구성원 정보)</div>
+            <div class="arrow">→</div>
+            <div class="node">API 서버 동기화<br />(사번/이메일 매핑)</div>
+            <div class="arrow">→</div>
+            <div class="node">오브젝트 스토리지<br />(사진/음성 파일)</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>3. 구조도 B: 음식 등록 흐름</h2>
+        <p class="diagram-title">사용자 행동 → 시스템 처리 → 결과</p>
+        <div class="flow">
+          <div class="flow-row">
+            <div class="node">1) 사번 입력</div>
+            <div class="arrow">→</div>
+            <div class="node">2) 구성원 확인<br />(Google Sheets 기반)</div>
+            <div class="arrow">→</div>
+            <div class="node">3) 음식명/유통기한/사진 등록</div>
+          </div>
+          <div class="flow-row">
+            <div class="node">4) 유통기한 검증<br />(등록일 기준 6개월 이내)</div>
+            <div class="arrow">→</div>
+            <div class="node">5) DB 저장 + 알림 일정 생성</div>
+            <div class="arrow">→</div>
+            <div class="node">6) 등록 완료</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>4. 구조도 C: 알림 정책 타임라인</h2>
+        <p>유통기한을 기준으로 알림이 자동 예약됩니다.</p>
+        <ul class="timeline">
+          <li><strong>D-3</strong>: 본인 Slack DM 알림</li>
+          <li><strong>D-day</strong>: 본인 Slack DM 알림</li>
+          <li><strong>D+7</strong>: 본인 Slack DM + (미처리 시) 관리자 알림</li>
+          <li><strong>D+14 이후</strong>: 미처리 상태이면 매주 본인 재알림</li>
+        </ul>
+        <p class="warn">
+          Slack 사용자 매핑이 실패하면 알림 누락을 막기 위해 관리자 채널로 fallback 알림이 갑니다.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>5. 개인정보와 보관 정책</h2>
+        <div class="grid-2">
+          <div class="box">
+            <h3>보관 기간</h3>
+            <ul>
+              <li>이름/사진 로그 운영 조회: <strong>1년</strong></li>
+              <li>데이터 삭제 기준: <strong>2년 경과 후</strong> 자동 삭제</li>
+            </ul>
+          </div>
+          <div class="box">
+            <h3>접근 원칙</h3>
+            <ul>
+              <li>일반 사용자: 본인 항목만 수정 가능</li>
+              <li>관리자: 전체 현황 확인</li>
+              <li>모든 변경은 감사 로그에 기록</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>6. 운영자가 알아야 할 체크포인트</h2>
+        <ul>
+          <li><span class="ok">정상</span>: API Health OK, Worker processed 로그 증가</li>
+          <li><span class="warn">주의</span>: Slack 매핑 실패 fallback 발생 빈도 증가</li>
+          <li><span class="warn">주의</span>: 월 비용 80% 초과 경고</li>
+          <li><span class="warn">조치</span>: 구성원 이메일/사번 정보가 최신인지 Google Sheets 확인</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>7. 자주 묻는 질문 (운영 관점)</h2>
+        <div class="box">
+          <h3>Q. 왜 사번 입력이 필요한가요?</h3>
+          <p>A. 등록자 식별을 정확히 하고, 본인 알림을 보내기 위해서입니다.</p>
+        </div>
+        <div class="box" style="margin-top: 10px">
+          <h3>Q. 유통기한을 너무 길게 넣으면 어떻게 되나요?</h3>
+          <p>A. 등록 시 자동으로 거절됩니다. (등록일 기준 6개월 초과 불가)</p>
+        </div>
+        <div class="box" style="margin-top: 10px">
+          <h3>Q. Slack 알림이 안 가면요?</h3>
+          <p>A. 시스템이 재시도하고, 실패 시 관리자 채널로 자동 에스컬레이션합니다.</p>
+        </div>
+      </section>
+
+      <p class="foot">
+        관련 기술 문서:
+        <code>docs/architecture/implementation-plan-v1.md</code>,
+        <code>docs/api/endpoints.md</code>
+      </p>
+    </div>
+  </body>
+</html>

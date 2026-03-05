@@ -1,0 +1,106 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: refri-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: refri_manager
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: refri-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9100:9000"
+      - "9101:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-mc:
+    image: minio/mc:latest
+    container_name: refri-minio-mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      /usr/bin/mc mb -p local/refri-assets || true;
+      /usr/bin/mc anonymous set private local/refri-assets;
+      tail -f /dev/null"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: services/api/Dockerfile
+    container_name: refri-api
+    environment:
+      NODE_ENV: "development"
+      PORT: "4000"
+      DATABASE_URL: "mysql://root:root@mysql:3306/refri_manager"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN:-}"
+      SLACK_SIGNING_SECRET: "${SLACK_SIGNING_SECRET:-}"
+      ADMIN_ALERT_CHANNEL: "${ADMIN_ALERT_CHANNEL:-#fridge-admin}"
+      GOOGLE_SHEETS_ID: "${GOOGLE_SHEETS_ID:-}"
+      GOOGLE_SHEETS_RANGE: "${GOOGLE_SHEETS_RANGE:-members!A:F}"
+      GOOGLE_SERVICE_ACCOUNT_JSON: "${GOOGLE_SERVICE_ACCOUNT_JSON:-}"
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_PUBLIC_PORT: "9100"
+      MINIO_REGION: "us-east-1"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      MINIO_BUCKET: "refri-assets"
+      MINIO_FORCE_PATH_STYLE: "true"
+      APP_TIMEZONE: "Asia/Seoul"
+      MONTHLY_BUDGET_KRW: "50000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-mc:
+        condition: service_started
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: services/worker/Dockerfile
+    container_name: refri-worker
+    environment:
+      NODE_ENV: "development"
+      DATABASE_URL: "mysql://root:root@mysql:3306/refri_manager"
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN:-}"
+      ADMIN_ALERT_CHANNEL: "${ADMIN_ALERT_CHANNEL:-#fridge-admin}"
+      APP_TIMEZONE: "Asia/Seoul"
+      MONTHLY_BUDGET_KRW: "50000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  minio_data:

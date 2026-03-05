@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fridge Expiry Notifications"
+  short_description: "Detect upcoming expiries and prepare alert actions"
+  default_prompt: "Use $fridge-expiry-notifications to scan expiry windows and draft Slack alerts."

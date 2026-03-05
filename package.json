@@ -1,0 +1,26 @@
+{
+  "name": "refri-manager",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Company fridge operations agent monorepo",
+  "packageManager": "pnpm@10.18.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "dev:api": "pnpm --filter @refri/api dev",
+    "dev:worker": "pnpm --filter @refri/worker dev",
+    "dev:tablet": "pnpm --filter @refri/tablet-web dev",
+    "dev:admin": "pnpm --filter @refri/admin-web dev",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "docker:up": "bash scripts/docker-up.sh",
+    "docker:down": "bash scripts/docker-down.sh",
+    "docker:smoke": "bash scripts/docker-smoke-test.sh"
+  }
+}

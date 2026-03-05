@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fridge Admin Audit"
+  short_description: "Review fridge logs and generate admin audit reports"
+  default_prompt: "Use $fridge-admin-audit to review registration history and produce audit-ready summaries."

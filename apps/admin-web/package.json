@@ -1,0 +1,22 @@
+{
+  "name": "@refri/admin-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'no tests for admin-web'"
+  },
+  "dependencies": {
+    "next": "15.1.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.8",
+    "@types/react": "^19.0.10",
+    "typescript": "^5.7.3"
+  }
+}

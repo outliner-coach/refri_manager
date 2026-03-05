@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum FoodStatus {
+  REGISTERED
+  DISPOSED
+  EXPIRED
+}
+
+enum TargetType {
+  OWNER
+  ADMIN
+}
+
+enum ScheduleType {
+  OWNER_D_MINUS_3
+  OWNER_D_DAY
+  OWNER_D_PLUS_7
+  OWNER_WEEKLY
+  ADMIN_D_PLUS_7
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED_RETRY
+  FAILED_PERM
+}
+
+model Member {
+  id          String       @id @default(uuid()) @db.Char(36)
+  employeeNo  String       @unique @map("employee_no") @db.VarChar(32)
+  name        String       @db.VarChar(100)
+  department  String       @db.VarChar(100)
+  email       String       @unique @db.VarChar(255)
+  slackUserId String?      @map("slack_user_id") @db.VarChar(64)
+  status      MemberStatus @default(ACTIVE)
+  syncedAt    DateTime     @default(now()) @map("synced_at") @db.Timestamp(0)
+
+  foodItems   FoodItem[]
+  events      FoodItemEvent[]
+
+  @@index([employeeNo])
+  @@map("members")
+}
+
+model FoodItem {
+  id           String      @id @default(uuid()) @db.Char(36)
+  memberId     String      @map("member_id") @db.Char(36)
+  foodName     String      @map("food_name") @db.VarChar(120)
+  expiryDate   DateTime    @map("expiry_date") @db.Date
+  registeredAt DateTime    @default(now()) @map("registered_at") @db.Timestamp(0)
+  status       FoodStatus  @default(REGISTERED)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamp(0)
+  deletedAt    DateTime?   @map("deleted_at") @db.Timestamp(0)
+
+  member       Member      @relation(fields: [memberId], references: [id])
+  assets       FoodAsset[]
+  events       FoodItemEvent[]
+  schedules    NotificationSchedule[]
+
+  @@index([expiryDate, status])
+  @@index([memberId, registeredAt])
+  @@map("food_items")
+}
+
+model FoodAsset {
+  id             String   @id @default(uuid()) @db.Char(36)
+  foodItemId     String   @map("food_item_id") @db.Char(36)
+  photoObjectKey String   @map("photo_object_key") @db.VarChar(255)
+  audioObjectKey String?  @map("audio_object_key") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+
+  foodItem       FoodItem  @relation(fields: [foodItemId], references: [id])
+
+  @@index([foodItemId])
+  @@map("food_assets")
+}
+
+model FoodItemEvent {
+  id            String   @id @default(uuid()) @db.Char(36)
+  foodItemId    String   @map("food_item_id") @db.Char(36)
+  actorMemberId String   @map("actor_member_id") @db.Char(36)
+  eventType     String   @map("event_type") @db.VarChar(64)
+  payloadJson   Json     @map("payload_json")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+
+  foodItem      FoodItem @relation(fields: [foodItemId], references: [id])
+  actor         Member   @relation(fields: [actorMemberId], references: [id])
+
+  @@index([foodItemId])
+  @@index([actorMemberId])
+  @@map("food_item_events")
+}
+
+model NotificationSchedule {
+  id          String             @id @default(uuid()) @db.Char(36)
+  foodItemId  String             @map("food_item_id") @db.Char(36)
+  targetType  TargetType         @map("target_type")
+  scheduleType ScheduleType      @map("schedule_type")
+  scheduledAt DateTime           @map("scheduled_at") @db.Timestamp(0)
+  status      NotificationStatus @default(PENDING)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamp(0)
+
+  foodItem    FoodItem             @relation(fields: [foodItemId], references: [id])
+  attempts    NotificationAttempt[]
+
+  @@index([status, scheduledAt])
+  @@map("notification_schedule")
+}
+
+model NotificationAttempt {
+  id             String             @id @default(uuid()) @db.Char(36)
+  scheduleId     String             @map("schedule_id") @db.Char(36)
+  idempotencyKey String             @unique @map("idempotency_key") @db.VarChar(120)
+  attemptNo      Int                @map("attempt_no")
+  status         NotificationStatus
+  errorCode      String?            @map("error_code") @db.VarChar(80)
+  responseJson   Json?              @map("response_json")
+  sentAt         DateTime?          @map("sent_at") @db.Timestamp(0)
+
+  schedule       NotificationSchedule @relation(fields: [scheduleId], references: [id])
+
+  @@map("notification_attempts")
+}
+
+model DeletionAudit {
+  id         String   @id @default(uuid()) @db.Char(36)
+  entityType String   @map("entity_type") @db.VarChar(64)
+  entityId   String   @map("entity_id") @db.VarChar(64)
+  deletedAt  DateTime @default(now()) @map("deleted_at") @db.Timestamp(0)
+  reason     String   @db.VarChar(255)
+  metaJson   Json?    @map("meta_json")
+
+  @@index([entityType, deletedAt])
+  @@map("deletion_audit")
+}

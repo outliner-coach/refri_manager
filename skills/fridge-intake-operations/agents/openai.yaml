@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fridge Intake Ops"
+  short_description: "Validate intake registrations and handoff actions"
+  default_prompt: "Use $fridge-intake-operations to verify new food registration and produce next actions."
