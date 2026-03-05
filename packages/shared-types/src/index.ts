@@ -76,7 +76,7 @@ export const UpdateFoodRequestSchema = z
 
 export const TranscribeResponseSchema = z.object({
   transcript: z.string(),
-  intent: z.enum(["IDENTITY_NAME", "FOOD_INFO"]),
+  intent: z.enum(["IDENTITY_NAME", "FOOD_INFO", "EMPLOYEE_LAST4"]),
   extracted: z.union([
     z.object({
       nameCandidate: z.string().nullable(),
@@ -85,6 +85,10 @@ export const TranscribeResponseSchema = z.object({
     z.object({
       foodName: z.string().nullable(),
       expiryDate: z.string().nullable(),
+      confidence: z.number().min(0).max(1)
+    }),
+    z.object({
+      employeeNoLast4: z.string().nullable(),
       confidence: z.number().min(0).max(1)
     })
   ]),

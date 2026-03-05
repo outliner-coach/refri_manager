@@ -35,6 +35,12 @@
   - 카메라 촬영/재촬영/확정 및 파일 업로드 폴백
   - API 추가/확장: `POST /v1/auth/name-lookup`, `POST /v1/intake/transcribe(intent)`
 
+- [DONE] 태블릿 무버튼 완전 자동 음성 진행
+  - 페이지 진입 시 자동 시작, 단계별 음성 안내/음성 인식 자동 전환
+  - 동명이인 선택을 음성(사번 끝4자리)으로 처리
+  - 사진 단계 자동 촬영/자동 업로드/자동 등록 완료
+  - `POST /v1/intake/transcribe` intent 확장(`EMPLOYEE_LAST4`)
+
 - [TODO] M3 알림 엔진 MVP
   - 본인: D-3, D-day, D+7, 이후 주간 재알림
   - 관리자: D+7 미처리 알림

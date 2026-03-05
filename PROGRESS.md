@@ -7,6 +7,19 @@
 
 ## 완료 이력
 - 2026-03-06 | 담당: Codex
+  - 태블릿 등록 UX를 “버튼 없는 완전 자동 음성 진행”으로 추가 전환
+  - 페이지 진입 시 자동 시작, 이름/동명이인(사번 끝4자리)/음식정보를 모두 음성 인식으로 단계 자동 진행
+  - 카메라 자동 실행 후 3초 자동 촬영 및 자동 업로드/자동 등록 흐름 구현
+  - 음성/추출 실패 시 1회 자동 재시도 후 수동 모드 자동 전환 유지
+  - API 확장:
+    - `POST /v1/intake/transcribe` intent에 `EMPLOYEE_LAST4` 추가
+    - `extractEmployeeLast4FromTranscript` 추출기 추가
+  - 타입/검증:
+    - `pnpm typecheck` 통과
+    - `pnpm test` 통과
+  - 산출물: `/Users/friends/ai/refri_manager/apps/tablet-web/app/page.tsx`, `/Users/friends/ai/refri_manager/services/api/src/routes/intake.ts`, `/Users/friends/ai/refri_manager/services/api/src/lib/transcribe.ts`, `/Users/friends/ai/refri_manager/packages/shared-types/src/index.ts`
+
+- 2026-03-06 | 담당: Codex
   - 태블릿 등록 UX를 음성 주도 위저드 + 수동 전환 구조로 전환
   - 태블릿 UI 상태머신(`IDLE~DONE`, `MANUAL_MODE`) 구현 및 TTS(`speechSynthesis`) 안내 추가
   - 이름 음성 인식 → `name-lookup` 후보 선택(동명이인 사번 끝 4자리) 흐름 구현

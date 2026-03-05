@@ -13,6 +13,12 @@ export type IdentityExtractedFields = {
   validationErrors: string[];
 };
 
+export type EmployeeLast4ExtractedFields = {
+  employeeNoLast4: string | null;
+  confidence: number;
+  validationErrors: string[];
+};
+
 const foodExtractionSchema = {
   name: "food_intake_extraction",
   schema: {
@@ -57,6 +63,31 @@ const identityExtractionSchema = {
       }
     },
     required: ["nameCandidate", "confidence", "validationErrors"]
+  },
+  strict: true
+};
+
+const employeeLast4ExtractionSchema = {
+  name: "employee_last4_extraction",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      employeeNoLast4: {
+        type: ["string", "null"],
+        description: "4-digit employee number suffix when present, ex: 1234"
+      },
+      confidence: {
+        type: "number",
+        minimum: 0,
+        maximum: 1
+      },
+      validationErrors: {
+        type: "array",
+        items: { type: "string" }
+      }
+    },
+    required: ["employeeNoLast4", "confidence", "validationErrors"]
   },
   strict: true
 };
@@ -141,5 +172,38 @@ export async function extractIdentityNameFromTranscript(
 
   const output = response.output_text;
   const parsed = JSON.parse(output) as IdentityExtractedFields;
+  return parsed;
+}
+
+export async function extractEmployeeLast4FromTranscript(
+  transcript: string
+): Promise<EmployeeLast4ExtractedFields> {
+  const client = getClient();
+
+  const response = await client.responses.create({
+    model: "gpt-4.1-mini",
+    input: [
+      {
+        role: "system",
+        content:
+          "Extract only the 4-digit employee number suffix from Korean transcript. Return null when missing. If uncertain, add validationErrors."
+      },
+      {
+        role: "user",
+        content: transcript
+      }
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: employeeLast4ExtractionSchema.name,
+        schema: employeeLast4ExtractionSchema.schema,
+        strict: true
+      }
+    }
+  });
+
+  const output = response.output_text;
+  const parsed = JSON.parse(output) as EmployeeLast4ExtractedFields;
   return parsed;
 }

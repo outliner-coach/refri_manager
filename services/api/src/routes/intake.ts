@@ -1,15 +1,19 @@
 import { FastifyInstance } from "fastify";
 import {
+  extractEmployeeLast4FromTranscript,
   extractFoodFieldsFromTranscript,
   extractIdentityNameFromTranscript,
   transcribeAudio
 } from "../lib/transcribe.js";
 
-type TranscribeIntent = "IDENTITY_NAME" | "FOOD_INFO";
+type TranscribeIntent = "IDENTITY_NAME" | "FOOD_INFO" | "EMPLOYEE_LAST4";
 
 function parseIntent(value: unknown): TranscribeIntent {
   if (value === "IDENTITY_NAME") {
     return "IDENTITY_NAME";
+  }
+  if (value === "EMPLOYEE_LAST4") {
+    return "EMPLOYEE_LAST4";
   }
   return "FOOD_INFO";
 }
@@ -45,7 +49,9 @@ export async function intakeRoutes(app: FastifyInstance) {
     const extracted =
       intent === "IDENTITY_NAME"
         ? await extractIdentityNameFromTranscript(transcript)
-        : await extractFoodFieldsFromTranscript(transcript);
+        : intent === "EMPLOYEE_LAST4"
+          ? await extractEmployeeLast4FromTranscript(transcript)
+          : await extractFoodFieldsFromTranscript(transcript);
 
     return {
       transcript,
