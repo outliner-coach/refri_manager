@@ -1,15 +1,32 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyReply } from "fastify";
 import { CreateFoodRequestSchema, UpdateFoodRequestSchema } from "@refri/shared-types";
 import { prisma } from "../db.js";
 import { generateInitialSchedules } from "../lib/schedule.js";
 import { isExpiryWithinSixMonths, parseDateOnly } from "../lib/dates.js";
 import { canEditFoodItem } from "../lib/authorization.js";
+import {
+  FoodStatusTransitionError,
+  isResolvableFoodStatus,
+  transitionFoodItemStatus
+} from "../lib/food-status.js";
 
 function assertActor(request: { actorMemberId?: string }): string {
   if (!request.actorMemberId) {
     throw new Error("Actor member is not resolved");
   }
   return request.actorMemberId;
+}
+
+function assertActorRole(request: { actorMemberRole?: "MEMBER" | "ADMIN" }) {
+  return request.actorMemberRole;
+}
+
+function sendTransitionError(reply: FastifyReply, error: unknown) {
+  if (error instanceof FoodStatusTransitionError) {
+    return reply.code(error.statusCode).send({ error: error.message });
+  }
+
+  throw error;
 }
 
 export async function foodRoutes(app: FastifyInstance) {
@@ -89,6 +106,7 @@ export async function foodRoutes(app: FastifyInstance) {
     }
 
     const actorMemberId = assertActor(request);
+    const actorMemberRole = assertActorRole(request);
 
     const existing = await prisma.foodItem.findUnique({
       where: { id: foodItemId }
@@ -98,22 +116,17 @@ export async function foodRoutes(app: FastifyInstance) {
       return reply.notFound("Food item not found");
     }
 
-    if (!canEditFoodItem(actorMemberId, existing.memberId)) {
+    if (!canEditFoodItem(actorMemberId, existing.memberId, actorMemberRole)) {
       return reply.forbidden("You can only edit your own food entries");
     }
 
-    const updates: {
+    const fieldUpdates: {
       foodName?: string;
       expiryDate?: Date;
-      status?: "REGISTERED" | "DISPOSED" | "EXPIRED";
     } = {};
 
     if (parsed.data.foodName) {
-      updates.foodName = parsed.data.foodName;
-    }
-
-    if (parsed.data.status) {
-      updates.status = parsed.data.status;
+      fieldUpdates.foodName = parsed.data.foodName;
     }
 
     if (parsed.data.expiryDate) {
@@ -121,37 +134,69 @@ export async function foodRoutes(app: FastifyInstance) {
       if (!isExpiryWithinSixMonths(existing.registeredAt, expiryDate)) {
         return reply.badRequest("expiryDate must be within 6 months from registeredAt");
       }
-      updates.expiryDate = expiryDate;
+      fieldUpdates.expiryDate = expiryDate;
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const item = await tx.foodItem.update({
-        where: { id: foodItemId },
-        data: updates
-      });
+    try {
+      const updated = await prisma.$transaction(async (tx) => {
+        let item = existing;
 
-      await tx.foodItemEvent.create({
-        data: {
-          foodItemId,
-          actorMemberId,
-          eventType: "FOOD_UPDATED",
-          payloadJson: parsed.data
+        const hasFieldUpdates = Boolean(fieldUpdates.foodName || fieldUpdates.expiryDate);
+        if (hasFieldUpdates) {
+          item = await tx.foodItem.update({
+            where: { id: foodItemId },
+            data: fieldUpdates
+          });
+
+          await tx.foodItemEvent.create({
+            data: {
+              foodItemId,
+              actorMemberId,
+              eventType: "FOOD_UPDATED",
+              payloadJson: {
+                foodName: parsed.data.foodName,
+                expiryDate: parsed.data.expiryDate
+              }
+            }
+          });
         }
+
+        if (parsed.data.status) {
+          if (isResolvableFoodStatus(parsed.data.status)) {
+            const transition = await transitionFoodItemStatus({
+              db: tx,
+              foodItemId,
+              nextStatus: parsed.data.status,
+              actorMemberId,
+              actorMemberRole,
+              source: actorMemberRole === "ADMIN" ? "ADMIN" : "API"
+            });
+            item = transition.foodItem;
+          } else if (parsed.data.status !== item.status) {
+            throw new FoodStatusTransitionError("This status transition is not supported", 400);
+          }
+        }
+
+        return item;
       });
 
-      return item;
-    });
-
-    return {
-      foodItemId: updated.id,
-      status: updated.status,
-      updatedAt: updated.updatedAt
-    };
+      return {
+        foodItemId: updated.id,
+        status: updated.status,
+        updatedAt: updated.updatedAt
+      };
+    } catch (error) {
+      return sendTransitionError(reply, error);
+    }
   });
 
   app.get("/v1/foods/me", async (request) => {
     const actorMemberId = assertActor(request);
-    const query = request.query as { status?: "REGISTERED" | "DISPOSED" | "EXPIRED"; from?: string; to?: string };
+    const query = request.query as {
+      status?: "REGISTERED" | "TAKEN_OUT" | "DISPOSED" | "EXPIRED";
+      from?: string;
+      to?: string;
+    };
 
     const where = {
       memberId: actorMemberId,
@@ -184,6 +229,7 @@ export async function foodRoutes(app: FastifyInstance) {
         status: item.status,
         expiryDate: item.expiryDate,
         registeredAt: item.registeredAt,
+        isOverdue: item.status === "REGISTERED" && item.expiryDate.getTime() < Date.now(),
         photoObjectKey: item.assets[0]?.photoObjectKey ?? null,
         audioObjectKey: item.assets[0]?.audioObjectKey ?? null
       }))

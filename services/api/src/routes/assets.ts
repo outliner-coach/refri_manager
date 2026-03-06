@@ -18,10 +18,18 @@ export async function assetsRoutes(app: FastifyInstance) {
     const protoFromHeader = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
     const protocol = protoFromHeader?.split(",")[0]?.trim() || request.protocol || "http";
 
-    const autoPublicEndpoint = host ? `${protocol}://${host}:${env.MINIO_PUBLIC_PORT}` : undefined;
-    const publicEndpoint = env.MINIO_PUBLIC_ENDPOINT ?? autoPublicEndpoint;
+    const signingEndpoint = host
+      ? protocol === "https"
+        ? `${protocol}://${host}`
+        : `${protocol}://${host}:${env.MINIO_PUBLIC_PORT}`
+      : env.MINIO_PUBLIC_ENDPOINT;
 
-    const result = await createUploadUrl(parsed.data, publicEndpoint);
+    const result = await createUploadUrl(parsed.data, signingEndpoint);
+    if (host && protocol === "https") {
+      const url = new URL(result.uploadUrl);
+      url.pathname = `/storage${url.pathname}`;
+      result.uploadUrl = url.toString();
+    }
     return result;
   });
 }

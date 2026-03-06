@@ -1,10 +1,12 @@
 import fp from "fastify-plugin";
 import { FastifyRequest } from "fastify";
 import { prisma } from "../db.js";
+import { MemberRole } from "../lib/member-role.js";
 
 declare module "fastify" {
   interface FastifyRequest {
     actorMemberId?: string;
+    actorMemberRole?: MemberRole;
   }
 }
 
@@ -30,6 +32,7 @@ async function resolveActor(request: FastifyRequest) {
 
 export const actorPlugin = fp(async (fastify) => {
   fastify.decorateRequest("actorMemberId", undefined);
+  fastify.decorateRequest("actorMemberRole", undefined);
 
   fastify.addHook("preHandler", async (request) => {
     const url = request.url.split("?")[0];
@@ -37,6 +40,7 @@ export const actorPlugin = fp(async (fastify) => {
       url === "/v1/auth/employee-lookup" ||
       url === "/v1/auth/name-lookup" ||
       url === "/v1/intake/transcribe" ||
+      url === "/v1/slack/interactivity" ||
       url === "/health" ||
       url === "/v1/internal/sync/members"
     ) {
@@ -51,5 +55,6 @@ export const actorPlugin = fp(async (fastify) => {
     }
 
     request.actorMemberId = member.id;
+    request.actorMemberRole = member.role;
   });
 });

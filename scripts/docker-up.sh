@@ -27,7 +27,11 @@ if [ -f "$ROOT_DIR/.env" ]; then
 fi
 
 echo "[docker-up] starting services..."
-"$DOCKER_BIN" compose -f "$COMPOSE_FILE" up -d --build
+if [ -f "$ROOT_DIR/.env" ]; then
+  "$DOCKER_BIN" compose --env-file "$ROOT_DIR/.env" -f "$COMPOSE_FILE" up -d --build
+else
+  "$DOCKER_BIN" compose -f "$COMPOSE_FILE" up -d --build
+fi
 
 echo "[docker-up] waiting for api health..."
 for i in {1..60}; do

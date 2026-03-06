@@ -13,7 +13,8 @@ const EnvSchema = z.object({
   ADMIN_ALERT_CHANNEL: z.string().default("#fridge-admin"),
   GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   GOOGLE_SHEETS_ID: z.string().optional(),
-  GOOGLE_SHEETS_RANGE: z.string().default("members!A:F"),
+  GOOGLE_SHEETS_MEMBERS_RANGE: z.string().default("members!A:D"),
+  GOOGLE_SHEETS_ADMINS_RANGE: z.string().default("admin!A:A"),
   MINIO_ENDPOINT: z.string().default("http://localhost:9000"),
   MINIO_PUBLIC_ENDPOINT: z.preprocess(
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),

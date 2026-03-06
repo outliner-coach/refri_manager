@@ -7,6 +7,7 @@ CREATE TABLE `members` (
     `email` VARCHAR(255) NOT NULL,
     `slack_user_id` VARCHAR(64) NULL,
     `status` ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    `role` ENUM('MEMBER', 'ADMIN') NOT NULL DEFAULT 'MEMBER',
     `synced_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 
     UNIQUE INDEX `members_employee_no_key`(`employee_no`),
@@ -22,7 +23,7 @@ CREATE TABLE `food_items` (
     `food_name` VARCHAR(120) NOT NULL,
     `expiry_date` DATE NOT NULL,
     `registered_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-    `status` ENUM('REGISTERED', 'DISPOSED', 'EXPIRED') NOT NULL DEFAULT 'REGISTERED',
+    `status` ENUM('REGISTERED', 'TAKEN_OUT', 'DISPOSED', 'EXPIRED') NOT NULL DEFAULT 'REGISTERED',
     `updated_at` TIMESTAMP(0) NOT NULL,
     `deleted_at` TIMESTAMP(0) NULL,
 
@@ -64,7 +65,7 @@ CREATE TABLE `notification_schedule` (
     `target_type` ENUM('OWNER', 'ADMIN') NOT NULL,
     `schedule_type` ENUM('OWNER_D_MINUS_3', 'OWNER_D_DAY', 'OWNER_D_PLUS_7', 'OWNER_WEEKLY', 'ADMIN_D_PLUS_7') NOT NULL,
     `scheduled_at` TIMESTAMP(0) NOT NULL,
-    `status` ENUM('PENDING', 'SENT', 'FAILED_RETRY', 'FAILED_PERM') NOT NULL DEFAULT 'PENDING',
+    `status` ENUM('PENDING', 'SENT', 'FAILED_RETRY', 'FAILED_PERM', 'CANCELED') NOT NULL DEFAULT 'PENDING',
     `created_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 
     INDEX `notification_schedule_status_scheduled_at_idx`(`status`, `scheduled_at`),
@@ -77,7 +78,7 @@ CREATE TABLE `notification_attempts` (
     `schedule_id` CHAR(36) NOT NULL,
     `idempotency_key` VARCHAR(120) NOT NULL,
     `attempt_no` INTEGER NOT NULL,
-    `status` ENUM('PENDING', 'SENT', 'FAILED_RETRY', 'FAILED_PERM') NOT NULL,
+    `status` ENUM('PENDING', 'SENT', 'FAILED_RETRY', 'FAILED_PERM', 'CANCELED') NOT NULL,
     `error_code` VARCHAR(80) NULL,
     `response_json` JSON NULL,
     `sent_at` TIMESTAMP(0) NULL,

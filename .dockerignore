@@ -1,8 +1,13 @@
 node_modules
+**/node_modules
 .pnpm-store
+**/.pnpm-store
 .git
 .gitignore
 .next
+**/.next
 dist
+**/dist
 coverage
+**/coverage
 .env

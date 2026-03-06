@@ -12,8 +12,14 @@ enum MemberStatus {
   INACTIVE
 }
 
+enum MemberRole {
+  MEMBER
+  ADMIN
+}
+
 enum FoodStatus {
   REGISTERED
+  TAKEN_OUT
   DISPOSED
   EXPIRED
 }
@@ -36,6 +42,7 @@ enum NotificationStatus {
   SENT
   FAILED_RETRY
   FAILED_PERM
+  CANCELED
 }
 
 model Member {
@@ -46,6 +53,7 @@ model Member {
   email       String       @unique @db.VarChar(255)
   slackUserId String?      @map("slack_user_id") @db.VarChar(64)
   status      MemberStatus @default(ACTIVE)
+  role        MemberRole   @default(MEMBER)
   syncedAt    DateTime     @default(now()) @map("synced_at") @db.Timestamp(0)
 
   foodItems   FoodItem[]

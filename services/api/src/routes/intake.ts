@@ -1,12 +1,13 @@
 import { FastifyInstance } from "fastify";
 import {
+  extractConfirmationFromTranscript,
   extractEmployeeLast4FromTranscript,
   extractFoodFieldsFromTranscript,
   extractIdentityNameFromTranscript,
+  extractSelectionNumberFromTranscript,
+  type TranscribeIntent,
   transcribeAudio
 } from "../lib/transcribe.js";
-
-type TranscribeIntent = "IDENTITY_NAME" | "FOOD_INFO" | "EMPLOYEE_LAST4";
 
 function parseIntent(value: unknown): TranscribeIntent {
   if (value === "IDENTITY_NAME") {
@@ -14,6 +15,12 @@ function parseIntent(value: unknown): TranscribeIntent {
   }
   if (value === "EMPLOYEE_LAST4") {
     return "EMPLOYEE_LAST4";
+  }
+  if (value === "CONFIRMATION") {
+    return "CONFIRMATION";
+  }
+  if (value === "SELECTION_NUMBER") {
+    return "SELECTION_NUMBER";
   }
   return "FOOD_INFO";
 }
@@ -45,12 +52,16 @@ export async function intakeRoutes(app: FastifyInstance) {
       return reply.badRequest("audio file is required");
     }
 
-    const transcript = await transcribeAudio(audioBuffer, filename, mimeType);
+    const transcript = await transcribeAudio(audioBuffer, filename, mimeType, intent);
     const extracted =
       intent === "IDENTITY_NAME"
         ? await extractIdentityNameFromTranscript(transcript)
         : intent === "EMPLOYEE_LAST4"
           ? await extractEmployeeLast4FromTranscript(transcript)
+          : intent === "CONFIRMATION"
+            ? extractConfirmationFromTranscript(transcript)
+            : intent === "SELECTION_NUMBER"
+              ? extractSelectionNumberFromTranscript(transcript)
           : await extractFoodFieldsFromTranscript(transcript);
 
     return {

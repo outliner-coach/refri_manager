@@ -104,6 +104,9 @@ importers:
       '@refri/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@slack/web-api':
+        specifier: ^7.8.0
+        version: 7.14.1
       dayjs:
         specifier: ^1.11.13
         version: 1.11.19
@@ -163,6 +166,9 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.0.7
+        version: 3.2.4(@types/node@22.19.13)(jiti@2.6.1)(tsx@4.21.0)
 
 packages:
 

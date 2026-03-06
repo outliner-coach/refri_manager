@@ -23,7 +23,8 @@ export async function authRoutes(app: FastifyInstance) {
       name: member.name,
       department: member.department,
       email: member.email,
-      status: member.status
+      status: member.status,
+      role: member.role
     };
   });
 
@@ -56,7 +57,8 @@ export async function authRoutes(app: FastifyInstance) {
         department: member.department,
         employeeNoLast4: member.employeeNo.slice(-4),
         email: member.email,
-        status: member.status
+        status: member.status,
+        role: member.role
       }))
     };
   });

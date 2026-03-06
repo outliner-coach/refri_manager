@@ -18,4 +18,8 @@ if ! command -v "$DOCKER_BIN" >/dev/null 2>&1; then
   fi
 fi
 
-"$DOCKER_BIN" compose -f "$COMPOSE_FILE" down
+if [ -f "$ROOT_DIR/.env" ]; then
+  "$DOCKER_BIN" compose --env-file "$ROOT_DIR/.env" -f "$COMPOSE_FILE" down
+else
+  "$DOCKER_BIN" compose -f "$COMPOSE_FILE" down
+fi

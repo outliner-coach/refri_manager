@@ -1,7 +1,12 @@
-import { NotificationStatus } from "@prisma/client";
+import { NotificationStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { buildIdempotencyKey } from "../lib/idempotency.js";
-import { lookupSlackUserIdByEmail, sendAdminFallback, sendDirectMessage } from "../lib/slack.js";
+import {
+  buildOwnerReminderMessage,
+  lookupSlackUserIdByEmail,
+  sendAdminFallback,
+  sendDirectMessage
+} from "../lib/slack.js";
 
 const MAX_RETRY = 5;
 
@@ -51,10 +56,10 @@ export async function processDueNotifications(now = new Date()) {
       continue;
     }
 
-    if (schedule.foodItem.status === "DISPOSED") {
+    if (schedule.foodItem.status !== "REGISTERED") {
       await prisma.notificationSchedule.update({
         where: { id: schedule.id },
-        data: { status: "SENT" }
+        data: { status: "CANCELED" }
       });
       continue;
     }
@@ -75,20 +80,43 @@ export async function processDueNotifications(now = new Date()) {
 
     let success = false;
     let errorCode: string | null = null;
+    let responseJson: Prisma.InputJsonValue = { delivered: false };
 
     if (schedule.targetType === "OWNER" && userId) {
-      const message = `[냉장고 알림] ${schedule.foodItem.foodName} / 유통기한 ${schedule.foodItem.expiryDate.toISOString().slice(0, 10)}`;
+      const message = buildOwnerReminderMessage({
+        foodItemId: schedule.foodItem.id,
+        foodName: schedule.foodItem.foodName,
+        expiryDate: schedule.foodItem.expiryDate.toISOString().slice(0, 10)
+      });
       const result = await sendDirectMessage(userId, message);
       success = result.ok;
+
       if (!result.ok) {
         errorCode = result.error;
+        responseJson = {
+          delivered: false,
+          reason: errorCode
+        } as Prisma.InputJsonObject;
+      } else {
+        responseJson = {
+          delivered: true,
+          channel: result.channel,
+          ts: result.ts
+        } as Prisma.InputJsonObject;
       }
     } else {
-      const fallbackText = `[관리자 알림] 사용자 매핑 실패 또는 ADMIN 스케줄: ${member.email} / item=${schedule.foodItem.id}`;
+      const fallbackText = `[관리자 알림] 사용자 매핑 실패 또는 관리자 대상 ${member.email} / item=${schedule.foodItem.id}`;
       const fallbackResult = await sendAdminFallback(fallbackText);
       success = fallbackResult.ok;
+
       if (!fallbackResult.ok) {
         errorCode = fallbackResult.error;
+        responseJson = {
+          delivered: false,
+          reason: errorCode
+        } as Prisma.InputJsonObject;
+      } else {
+        responseJson = { delivered: true } as Prisma.InputJsonObject;
       }
     }
 
@@ -100,24 +128,14 @@ export async function processDueNotifications(now = new Date()) {
         attemptNo,
         status: nextStatusFromAttempt(success),
         errorCode,
-        responseJson: success
-          ? { delivered: true }
-          : {
-              delivered: false,
-              reason: errorCode
-            },
+        responseJson,
         sentAt: success ? new Date() : null
       },
       update: {
         attemptNo,
         status: nextStatusFromAttempt(success),
         errorCode,
-        responseJson: success
-          ? { delivered: true }
-          : {
-              delivered: false,
-              reason: errorCode
-            },
+        responseJson,
         sentAt: success ? new Date() : null
       }
     });

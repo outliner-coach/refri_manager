@@ -3,7 +3,10 @@ import { z } from "zod";
 export const MemberStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
 export type MemberStatus = z.infer<typeof MemberStatusSchema>;
 
-export const FoodStatusSchema = z.enum(["REGISTERED", "DISPOSED", "EXPIRED"]);
+export const MemberRoleSchema = z.enum(["MEMBER", "ADMIN"]);
+export type MemberRole = z.infer<typeof MemberRoleSchema>;
+
+export const FoodStatusSchema = z.enum(["REGISTERED", "TAKEN_OUT", "DISPOSED", "EXPIRED"]);
 export type FoodStatus = z.infer<typeof FoodStatusSchema>;
 
 export const ScheduleTypeSchema = z.enum([
@@ -15,7 +18,13 @@ export const ScheduleTypeSchema = z.enum([
 ]);
 export type ScheduleType = z.infer<typeof ScheduleTypeSchema>;
 
-export const NotificationStatusSchema = z.enum(["PENDING", "SENT", "FAILED_RETRY", "FAILED_PERM"]);
+export const NotificationStatusSchema = z.enum([
+  "PENDING",
+  "SENT",
+  "FAILED_RETRY",
+  "FAILED_PERM",
+  "CANCELED"
+]);
 export type NotificationStatus = z.infer<typeof NotificationStatusSchema>;
 
 export const TargetTypeSchema = z.enum(["OWNER", "ADMIN"]);
@@ -31,7 +40,8 @@ export const EmployeeLookupResponseSchema = z.object({
   name: z.string(),
   department: z.string(),
   email: z.string().email(),
-  status: MemberStatusSchema
+  status: MemberStatusSchema,
+  role: MemberRoleSchema
 });
 
 export const NameLookupRequestSchema = z.object({
@@ -44,7 +54,8 @@ export const NameLookupCandidateSchema = z.object({
   department: z.string(),
   employeeNoLast4: z.string(),
   email: z.string().email(),
-  status: MemberStatusSchema
+  status: MemberStatusSchema,
+  role: MemberRoleSchema
 });
 
 export const NameLookupResponseSchema = z.object({
@@ -76,7 +87,7 @@ export const UpdateFoodRequestSchema = z
 
 export const TranscribeResponseSchema = z.object({
   transcript: z.string(),
-  intent: z.enum(["IDENTITY_NAME", "FOOD_INFO", "EMPLOYEE_LAST4"]),
+  intent: z.enum(["IDENTITY_NAME", "FOOD_INFO", "EMPLOYEE_LAST4", "CONFIRMATION", "SELECTION_NUMBER"]),
   extracted: z.union([
     z.object({
       nameCandidate: z.string().nullable(),
@@ -89,6 +100,14 @@ export const TranscribeResponseSchema = z.object({
     }),
     z.object({
       employeeNoLast4: z.string().nullable(),
+      confidence: z.number().min(0).max(1)
+    }),
+    z.object({
+      confirmed: z.boolean().nullable(),
+      confidence: z.number().min(0).max(1)
+    }),
+    z.object({
+      selectedNumber: z.number().int().positive().nullable(),
       confidence: z.number().min(0).max(1)
     })
   ]),

@@ -10,7 +10,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no tests for worker'"
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^22.13.8",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
   }
 }
